@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import subprocess
+from io import TextIOWrapper
 import json
 import re
 import xml.etree.ElementTree as ET
@@ -10,7 +11,9 @@ import argparse
 
 import logging as log
 
-log.basicConfig(level=log.INFO)
+import progress.bar as progress_bar
+
+log.basicConfig(level=log.ERROR)
 
 
 def _time2str(t):
@@ -164,7 +167,7 @@ def get_folder_metadata(folder):
     return ret
 
 
-def encode(folder, opus=None, bitrate: float = 15, subchapters: bool = False, af: str = None):
+def encode(folder, opus=None, bitrate: float = 15, subchapters: bool = False, af: str = None, progress=True):
     folder = Path(folder)
     if opus is None:
         log.warning('Guessing opus filename')
@@ -229,7 +232,7 @@ def encode(folder, opus=None, bitrate: float = 15, subchapters: bool = False, af
 
     log.debug('opusenc = %r', opus_params)
 
-    ffmpeg_params = ['ffmpeg', '-loglevel', 'quiet', '-hide_banner']
+    ffmpeg_params = ['ffmpeg', '-loglevel', 'quiet', '-hide_banner', '-stats']
 
     filt= ''
     for n, f in enumerate(metadata['files']):
@@ -253,26 +256,101 @@ def encode(folder, opus=None, bitrate: float = 15, subchapters: bool = False, af
 
     log.debug('ffmpeg_params = %r', ffmpeg_params)
 
-    log.info('%s files (%s)', len(metadata['files']), _time2str(metadata['duration']))
+    log.info(
+        '%s files (%s)',
+        len(metadata['files']),
+        _time2str(metadata['duration'])
+    )
 
-    ffmpeg_sub = subprocess.Popen(ffmpeg_params, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-    opus_sub = subprocess.Popen(opus_params, stdin=ffmpeg_sub.stdout)
+    ffmpeg_sub = subprocess.Popen(
+        ffmpeg_params,
+        stdout=subprocess.PIPE,
+        stdin=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
 
-    ffmpeg_sub.stdout.close()
-    opus_sub.communicate()
+    progress_io = TextIOWrapper(ffmpeg_sub.stderr, newline="\r", line_buffering=True)
+    opus_sub = subprocess.Popen(
+        opus_params,
+        stdin=ffmpeg_sub.stdout,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    #opus_sub.communicate()
+
+    if progress:
+        bar = progress_bar.ShadyBar(
+            'Processing %r' % (metadata['title'],),
+            max=metadata['duration'],
+            suffix='%(percent)d%% [%(eta_td)s]'
+        )
+
+        progress_rx = re.compile('\s*time\s*=\s*(\S+)\s*')
+
+    while opus_sub.poll() is None:
+        line = progress_io.readline()
+
+        if not progress:
+            continue
+
+        m = progress_rx.search(line)
+        if m:
+            timestr = m.group(1)
+            progress_time = _ts_from_time(timestr)
+            bar.goto(progress_time)
+    bar.finish()
     opus_sub.wait()
     ffmpeg_sub.wait()
 
 
-
-parser = argparse.ArgumentParser(description='Convert a OverDrive audiobook folder with an opus file with thumbnail and chapter information')
-parser.add_argument('--bitrate', type=int, help='opus bitrate in kbps', default=15)
-parser.add_argument('--filter', type=str, help='audio filter for fmmpeg', default=None, required=False)
-parser.add_argument('--subchapters', action='store_true', help='include subchapters')
-parser.add_argument('folder', type=str, help='input folder')
-parser.add_argument('opus_file', type=str, help='output opus file', default=None, nargs='?')
+parser = argparse.ArgumentParser(
+    description='Convert a OverDrive audiobook folder with an opus file '
+                'with thumbnail and chapter information'
+)
+parser.add_argument(
+    '--bitrate',
+    type=int,
+    help='opus bitrate in kbps',
+    default=15
+)
+parser.add_argument(
+    '--filter',
+    type=str,
+    help='audio filter for fmmpeg',
+    default=None,
+    required=False
+)
+parser.add_argument(
+    '--subchapters',
+    action='store_true',
+    help='include subchapters'
+)
+parser.add_argument(
+    '--noprogress',
+    action='store_true',
+    help='show encoding progress bar'
+)
+parser.add_argument(
+    'folder',
+    type=str,
+    help='input folder'
+)
+parser.add_argument(
+    'opus_file',
+    type=str,
+    help='output opus file',
+    default=None,
+    nargs='?'
+)
 
 args = parser.parse_args()
 log.debug('args = %r', args)
 
-encode(args.folder, args.opus_file, bitrate=args.bitrate, subchapters=args.subchapters, af=args.filter)
+encode(
+    args.folder,
+    args.opus_file,
+    bitrate=args.bitrate,
+    subchapters=args.subchapters,
+    af=args.filter,
+    progress=not args.noprogress
+)
