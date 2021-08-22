@@ -328,7 +328,7 @@ parser.add_argument(
 parser.add_argument(
     '--noprogress',
     action='store_true',
-    help='show encoding progress bar'
+    help='do not display encoding progress bar'
 )
 parser.add_argument(
     'folder',
