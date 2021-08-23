@@ -10,10 +10,29 @@ from pathlib import PurePath as Path
 import argparse
 
 import logging as log
-
-import progress.bar as progress_bar
-
 log.basicConfig(level=log.ERROR)
+
+
+try:
+    import progress.bar as progress_bar
+    Bar = progress_bar.ShadyBar
+except ImportError:
+    log.info('No progress bar implementation found. Using fallback.')
+
+    class Bar:
+
+        def __init__(self, title, max, suffix=''):
+            self.__title = title
+            self.__max = max
+            self.__suffix = suffix
+
+        def goto(self, n):
+            suffix = self.__suffix % {'percent' : round(100.*n/self.__max), 'eta_td' : 'N/A'}
+            print(self.__title + "\t" + suffix + '\r', end='')
+
+        def finish(self):
+            self.goto(self.__max)
+            print()
 
 
 def _time2str(t):
@@ -279,7 +298,7 @@ def encode(folder, opus=None, bitrate: float = 15, subchapters: bool = False, af
     #opus_sub.communicate()
 
     if progress:
-        bar = progress_bar.ShadyBar(
+        bar = Bar(
             'Processing %r' % (metadata['title'],),
             max=metadata['duration'],
             suffix='%(percent)d%% [%(eta_td)s]'
