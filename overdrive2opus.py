@@ -208,6 +208,7 @@ def encode(folder, opus=None, bitrate: float = 15, subchapters: bool = False, af
         '--downmix-mono',
         '--comp', '10',
         '--vbr', '--bitrate', str(bitrate),
+        '--speech',  # override detection
         '--title', metadata['title'],
         '--artist', metadata['artist'],
         '--album', metadata['album'],
