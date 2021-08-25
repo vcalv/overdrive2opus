@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from typing import Union
 import subprocess
 from io import TextIOWrapper
 import json
@@ -10,7 +11,7 @@ from pathlib import PurePath as Path
 import argparse
 
 import logging as log
-log.basicConfig(level=log.ERROR)
+log.basicConfig(level=log.WARNING)
 
 
 def _time2str(t, precision: int = 3):
@@ -191,7 +192,12 @@ def get_folder_metadata(folder):
         log.warning('No album information, guessing title')
 
         title = _get_field('title')
-        title = re.sub(r'\s*-?\s*Part\s*\d+\s*$', '', title, flags=re.IGNORECASE)
+        title = re.sub(
+            r'\s*-?\s*Part\s*\d+\s*$',
+            '',
+            title,
+            flags=re.IGNORECASE
+        )
         log.info('Title = %r', title)
 
     ret['title'] = title
@@ -205,7 +211,21 @@ def get_folder_metadata(folder):
     return ret
 
 
-def encode(folder, opus=None, bitrate: float = 15, subchapters: bool = False, af: str = None, progress=True):
+def encode(
+        folder: Union[str, Path],
+        opus: Union[str, Path] = None,
+        bitrate: float = 15,
+        subchapters: bool = False,
+        af: str = None,
+        progress: bool = True,
+        speed: int = 0
+        ):
+
+    if speed < -50:
+        log.warning('Invalid speed: truncating to -90%')
+        speed = -50
+    speed_float = 1 + speed/100.0
+
     folder = Path(folder)
     if opus is None:
         log.warning('Guessing opus filename')
@@ -256,7 +276,7 @@ def encode(folder, opus=None, bitrate: float = 15, subchapters: bool = False, af
         n += 1
         opus_params.extend([
             '--comment',
-            ('CHAPTER%02d=' % n)+_time2str(time)
+            ('CHAPTER%02d=' % n)+_time2str(time/speed_float)
         ])
         opus_params.extend([
             '--comment',
@@ -281,6 +301,10 @@ def encode(folder, opus=None, bitrate: float = 15, subchapters: bool = False, af
 
     # now for the complex filter
     filt += f"concat=n={n+1}:v=0:a=1"
+
+    if 0!=speed:
+        log.info('Adding speedup filter %r', speed_float)
+        filt += ',atempo=%f' % (speed_float,)
 
     if af is not None:
         log.info('Adding filter %r', af)
@@ -315,12 +339,11 @@ def encode(folder, opus=None, bitrate: float = 15, subchapters: bool = False, af
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
-    #opus_sub.communicate()
 
     if progress:
         bar = Bar(
             'Processing %r' % (metadata['title'],),
-            max=metadata['duration'],
+            max=metadata['duration']/speed_float,
             suffix='%(percent)d%% [%(eta_td)s]'
         )
 
@@ -370,6 +393,11 @@ parser.add_argument(
     help='do not display encoding progress bar'
 )
 parser.add_argument(
+    '--speed',
+    type=int,
+    help='speed up or down audio (signed integer %%). Chapters adjusted accordingly'
+)
+parser.add_argument(
     'folder',
     type=str,
     help='input folder'
@@ -391,5 +419,6 @@ encode(
     bitrate=args.bitrate,
     subchapters=args.subchapters,
     af=args.filter,
-    progress=not args.noprogress
+    progress=not args.noprogress,
+    speed=args.speed
 )
