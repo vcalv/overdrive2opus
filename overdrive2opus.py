@@ -395,6 +395,7 @@ parser.add_argument(
 parser.add_argument(
     '--speed',
     type=int,
+    default=0,
     help='speed up or down audio (signed integer %%). Chapters adjusted accordingly'
 )
 parser.add_argument(
