@@ -13,11 +13,27 @@ import logging as log
 log.basicConfig(level=log.ERROR)
 
 
+def _time2str(t, precision: int = 3):
+    minutes, seconds = divmod(t, 60)
+    minutes = round(minutes)
+    hours, minutes = divmod(minutes, 60)
+
+    fmt = '%02d:%02d:'
+
+    if precision <= 0:
+        fmt += '%02d'
+    else:
+        fmt += '%0'+str(3+precision)+'.'+str(precision)+'f'
+
+    return fmt % (hours, minutes, seconds)
+
+
 try:
     import progress.bar as progress_bar
     Bar = progress_bar.ShadyBar
 except ImportError:
     log.info('No progress bar implementation found. Using fallback.')
+    from datetime import datetime
 
     class Bar:
 
@@ -25,22 +41,25 @@ except ImportError:
             self.__title = title
             self.__max = max
             self.__suffix = suffix
+            self.__start = datetime.now()
 
         def goto(self, n):
-            suffix = self.__suffix % {'percent' : round(100.*n/self.__max), 'eta_td' : 'N/A'}
+            delta = datetime.now() - self.__start
+            percent = round(100.*n/self.__max)
+
+            eta_td = 'N/A'
+            if percent <= 0:
+                eta_td = float('+inf')
+            else:
+                eta_td = (100./percent - 1)*delta
+                eta_td = _time2str(round(eta_td.total_seconds()), precision=0)
+
+            suffix = self.__suffix % {'percent': percent, 'eta_td': eta_td}
             print(self.__title + "\t" + suffix + '\r', end='')
 
         def finish(self):
             self.goto(self.__max)
             print()
-
-
-def _time2str(t):
-    minutes, seconds = divmod(t, 60)
-    minutes = round(minutes)
-    hours, minutes = divmod(minutes, 60)
-
-    return f'{hours:02}:{minutes:02}:{seconds:06.3f}'
 
 
 def _ts_from_time(s):
