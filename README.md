@@ -10,6 +10,7 @@ For downloading overdrive audiobooks check out https://github.com/chbrown/overdr
 * Chapter information retrieved from proprietary overdrive metadata
 * Can ignore spurious sub-chapters that exist in many audiobooks
 * Speedup of audio (with chapter adjustment)
+* Audio (peak one-pass) normalization
 
 # Dependencies
 

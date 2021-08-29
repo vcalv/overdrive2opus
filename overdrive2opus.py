@@ -218,7 +218,8 @@ def encode(
         subchapters: bool = False,
         af: str = None,
         progress: bool = True,
-        speed: int = 0
+        speed: int = 0,
+        normalize: int = None
         ):
 
     if speed < -50:
@@ -293,7 +294,7 @@ def encode(
 
     ffmpeg_params = ['ffmpeg', '-loglevel', 'quiet', '-hide_banner', '-stats']
 
-    filt= ''
+    filt = ''
     for n, f in enumerate(metadata['files']):
         log.debug('Appending file %r to input', f)
         ffmpeg_params.extend(['-i', f['file']])
@@ -302,7 +303,21 @@ def encode(
     # now for the complex filter
     filt += f"concat=n={n+1}:v=0:a=1"
 
-    if 0!=speed:
+    if normalize is not None:
+        if normalize > 100:
+            normalize = 100
+        elif normalize < 0:
+            normalize = 0
+
+        # "widest" parameters possible
+        audio_peak = normalize / 100.0
+        audio_framelen = 8000
+        audio_gausssize = 301
+        audio_correctdc = 1
+
+        filt += f',dynaudnorm=peak={audio_peak}:framelen={audio_framelen}:gausssize={audio_gausssize}:correctdc={audio_correctdc}'
+
+    if 0 != speed:
         log.info('Adding speedup filter %r', speed_float)
         filt += ',atempo=%f' % (speed_float,)
 
@@ -399,6 +414,12 @@ parser.add_argument(
     help='speed up or down audio (signed integer %%). Chapters adjusted accordingly'
 )
 parser.add_argument(
+    '--normalize',
+    type=int,
+    default=None,
+    help='%% of max volume for dynamic normalization'
+)
+parser.add_argument(
     'folder',
     type=str,
     help='input folder'
@@ -421,5 +442,6 @@ encode(
     subchapters=args.subchapters,
     af=args.filter,
     progress=not args.noprogress,
-    speed=args.speed
+    speed=args.speed,
+    normalize=args.normalize
 )
