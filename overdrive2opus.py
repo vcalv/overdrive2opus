@@ -7,11 +7,30 @@ import json
 import re
 import xml.etree.ElementTree as ET
 from glob import glob
-from pathlib import PurePath as Path
+from pathlib import Path as Path
+from urllib.request import urlretrieve
+from appdirs import user_cache_dir
+from os import makedirs
 import argparse
 
 import logging as log
 log.basicConfig(level=log.WARNING)
+
+APPNAME = 'overdrive2opus'
+
+NOISE_MODEL_URL = 'https://raw.githubusercontent.com/GregorR/rnnoise-models/master/somnolent-hogwash-2018-09-01/sh.rnnn'
+
+
+# I dont' want to ship this due to unknown license
+def _get_noise_model():
+    filename = Path(user_cache_dir(APPNAME), 'voice.rnnn')
+    log.debug('noise_filename = %r', filename)
+    if not filename.exists():
+        directory = filename.parent
+        makedirs(directory, exist_ok=True)
+        log.info('Downloading voice/noise model from %r', NOISE_MODEL_URL)
+        urlretrieve(NOISE_MODEL_URL, filename)
+    return str(filename)
 
 
 def _time2str(t, precision: int = 3):
@@ -219,7 +238,8 @@ def encode(
         af: str = None,
         progress: bool = True,
         speed: int = 0,
-        normalize: int = None
+        normalize: int = None,
+        isolate_voice: bool = False
         ):
 
     if speed < -50:
@@ -302,6 +322,10 @@ def encode(
 
     # now for the complex filter
     filt += f"concat=n={n+1}:v=0:a=1"
+
+    if isolate_voice:
+        noise_filename = _get_noise_model()
+        filt += f',arnndn=m={noise_filename}'
 
     if normalize is not None:
         if normalize > 100:
@@ -420,6 +444,11 @@ parser.add_argument(
     help='%% of max volume for dynamic normalization'
 )
 parser.add_argument(
+    '--isolate_voice',
+    action='store_true',
+    help='apply filter to isolate voice from background noise'
+)
+parser.add_argument(
     'folder',
     type=str,
     help='input folder'
@@ -443,5 +472,6 @@ encode(
     af=args.filter,
     progress=not args.noprogress,
     speed=args.speed,
-    normalize=args.normalize
+    normalize=args.normalize,
+    isolate_voice=args.isolate_voice
 )

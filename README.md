@@ -11,10 +11,12 @@ For downloading overdrive audiobooks check out https://github.com/chbrown/overdr
 * Can ignore spurious sub-chapters that exist in many audiobooks
 * Speedup of audio (with chapter adjustment)
 * Audio (peak one-pass) normalization
+* Neural Network filter to isolate voice from all sorts of background sound/noise (requires external download made on the fly and cached)
 
 # Dependencies
 
 * python3
 * ffmpeg
 * opusenc
+* python-appdirs
 * python-progress (optional)
