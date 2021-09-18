@@ -415,13 +415,6 @@ parser.add_argument(
     default=15
 )
 parser.add_argument(
-    '--filter',
-    type=str,
-    help='audio filter for fmmpeg',
-    default=None,
-    required=False
-)
-parser.add_argument(
     '--subchapters',
     action='store_true',
     help='include subchapters'
@@ -447,6 +440,13 @@ parser.add_argument(
     '--isolate_voice',
     action='store_true',
     help='apply filter to isolate voice from background noise'
+)
+parser.add_argument(
+    '--filter',
+    type=str,
+    help='audio filter for fmmpeg. don\'t use unless you know what you are doing',
+    default=None,
+    required=False
 )
 parser.add_argument(
     'folder',
