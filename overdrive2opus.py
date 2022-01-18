@@ -6,11 +6,10 @@ from io import TextIOWrapper
 import json
 import re
 import xml.etree.ElementTree as ET
-from glob import glob
 from pathlib import Path as Path
 from urllib.request import urlretrieve
 from appdirs import user_cache_dir
-from os import makedirs
+from os import makedirs, scandir
 import argparse
 
 import logging as log
@@ -46,6 +45,20 @@ def _time2str(t, precision: int = 3):
         fmt += '%0'+str(3+precision)+'.'+str(precision)+'f'
 
     return fmt % (hours, minutes, seconds)
+
+def _list_files(path, ext=None):
+    if ext is None:
+        ext = ''
+    else:
+        if len(ext) > 0 and ext[0] != '.':
+            ext = '.' + ext
+
+    files = (Path(f) for f in scandir(path) if f.is_file())
+
+    if ext:
+        return [f for f in files if ext == f.suffix]
+    else:
+        return list(files)
 
 
 try:
@@ -161,10 +174,11 @@ def get_metadata(fname):
 
 
 def get_folder_metadata(folder):
-    files = glob(str(Path(Path(folder), Path('*.mp3'))), recursive=False)
+    files = _list_files(Path(folder), 'mp3')
 
     image = None
-    for img in glob(str(Path(Path(folder), Path('*.jpg'))), recursive=False):
+    for img in _list_files(Path(folder), 'jpg'):
+        img = img.as_posix()
         # ignore thumbnails
         # TODO Maybe I should just keep the highest resolution image
         if '_thumb' in img:
