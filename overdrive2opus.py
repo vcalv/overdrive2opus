@@ -6,7 +6,7 @@ from io import TextIOWrapper
 import json
 import re
 import xml.etree.ElementTree as ET
-from pathlib import Path as Path
+from pathlib import Path
 from urllib.request import urlretrieve
 from appdirs import user_cache_dir
 from os import makedirs, scandir
@@ -297,7 +297,8 @@ def encode(
     _add_comment('publisher', 'publisher')
     _add_comment('copyright', 'copyright')
 
-    n = 0
+    chapter_n = 0
+    prev_name = None
     for name, time in metadata['chapters']:
         if not subchapters:
             # cleanup spurious sub chapters
@@ -307,16 +308,21 @@ def encode(
             elif re.search(r'\s+\([0-9:]+\)\s*$', name):
                 log.info('Ignoring subchapter %r due to timestamp', name)
                 continue
+            elif prev_name is not None and prev_name == name:
+                log.info('Ignoring subchapter %r due to repeated chapter name', name)
+                continue
 
-        n += 1
+        chapter_n += 1
         opus_params.extend([
             '--comment',
-            ('CHAPTER%02d=' % n)+_time2str(time/speed_float)
+            ('CHAPTER%02d=' % chapter_n)+_time2str(time/speed_float)
         ])
         opus_params.extend([
             '--comment',
-            'CHAPTER%02dNAME=%s' % (n, name)
+            'CHAPTER%02dNAME=%s' % (chapter_n, name)
         ])
+
+        prev_name = name
 
     opus_params.extend(['-', str(opus)])
 
