@@ -138,10 +138,11 @@ def get_metadata(fname):
         ret[k] = t.get(k, None)
 
     track = _int(t.get('track'))
+    title = t.get('title')
 
     if track is None:
         rx = re.compile(r'-\s*Part\s*(\d+)', re.IGNORECASE)
-        m = rx.search(t['title'])
+        m = rx.search(title)
 
         if m:
             track = int(m.group(1))
@@ -151,7 +152,8 @@ def get_metadata(fname):
 
     # now for the OverDrive chapter information
 
-    root = ET.fromstring(t['OverDrive MediaMarkers'])
+    media_markers = t.get('OverDrive MediaMarkers', "<?xml version=\"1.0\" ?>\n<metadata/>")
+    root = ET.fromstring(media_markers)
     chapters = []
 
     for marker in root:
