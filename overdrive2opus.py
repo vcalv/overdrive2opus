@@ -141,18 +141,31 @@ def get_metadata(fname):
     title = t.get('title')
 
     if track is None:
+        log.debug(
+            'No track information for %r. Guessing from title %r.',
+            fname, title
+        )
+        if title is None:
+            raise KeyError("No title. Can't determine track")
+
         rx = re.compile(r'-\s*Part\s*(\d+)', re.IGNORECASE)
         m = rx.search(title)
 
         if m:
             track = int(m.group(1))
+        else:
+            log.error("Couldn't determine track information")
+            raise LookupError('No track information')
 
     ret['track'] = track
     ret['duration'] = float(d['duration'])
 
     # now for the OverDrive chapter information
 
-    media_markers = t.get('OverDrive MediaMarkers', "<?xml version=\"1.0\" ?>\n<metadata/>")
+    media_markers = t.get(
+        'OverDrive MediaMarkers',
+        "<?xml version=\"1.0\" ?>\n<metadata/>"
+    )
     root = ET.fromstring(media_markers)
     chapters = []
 
