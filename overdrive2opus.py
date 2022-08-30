@@ -13,7 +13,6 @@ from os import makedirs, scandir
 from appdirs import user_cache_dir
 
 import logging as log
-log.basicConfig(level=log.WARNING)
 
 APPNAME = 'overdrive2opus'
 
@@ -496,9 +495,21 @@ parser.add_argument(
     default=None,
     nargs='?'
 )
+parser.add_argument(
+    '-v',
+    '--verbose',
+    help='increase output verbosity',
+    action='store_true'
+)
+
 
 args = parser.parse_args()
-log.debug('args = %r', args)
+
+if args.verbose:
+    log.basicConfig(level=log.DEBUG)
+    log.debug('args = %r', args)
+else:
+    log.basicConfig(level=log.WARNING)
 
 encode(
     args.folder,
