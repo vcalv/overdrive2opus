@@ -8,9 +8,9 @@ import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from urllib.request import urlretrieve
-from appdirs import user_cache_dir
-from os import makedirs, scandir
 import argparse
+from os import makedirs, scandir
+from appdirs import user_cache_dir
 
 import logging as log
 log.basicConfig(level=log.WARNING)
@@ -45,6 +45,7 @@ def _time2str(t, precision: int = 3):
         fmt += '%0'+str(3+precision)+'.'+str(precision)+'f'
 
     return fmt % (hours, minutes, seconds)
+
 
 def _list_files(path, ext=None):
     if ext is None:
