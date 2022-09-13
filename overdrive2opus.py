@@ -260,8 +260,8 @@ def get_folder_metadata(folder):
 
 
 def encode(
-        folder: Union[str, Path],
-        opus: Union[str, Path] = None,
+        folder: Path,
+        opus: Union[Path, None] = None,
         bitrate: float = 15,
         subchapters: bool = False,
         af: str = None,
@@ -279,7 +279,7 @@ def encode(
     folder = Path(folder)
     if opus is None:
         log.warning('Guessing opus filename')
-        opus = Path(str(folder)+'.opus')
+        opus = folder.with_suffix('.opus')
 
     log.info('Encoding from %s to %s', folder, opus)
 
@@ -339,11 +339,11 @@ def encode(
 
         prev_name = name
 
-    opus_params.extend(['-', str(opus)])
-
     image = metadata['image']
     if image is not None:
         opus_params.extend(['--picture', image])
+
+    opus_params.extend(['-', str(opus)])
 
     log.debug('opusenc = %r', opus_params)
 
