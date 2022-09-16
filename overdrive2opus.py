@@ -31,6 +31,17 @@ def _get_noise_model():
     return str(filename)
 
 
+def _str2bytes(s):
+    if isinstance(s, bytes):
+        return s
+    elif isinstance(s, str):
+        return s.encode('utf-8')
+    else:
+        # hope for the best
+        log.warning("Can't convert %r to bytes", s)
+        return s
+
+
 def _time2str(t, precision: int = 3):
     minutes, seconds = divmod(t, 60)
     minutes = round(minutes)
@@ -298,15 +309,15 @@ def encode(
         '--comp', '10',
         '--vbr', '--bitrate', str(bitrate),
         '--speech',  # override detection
-        '--title', metadata['title'],
-        '--artist', metadata['artist'],
-        '--album', metadata['album'],
-        '--genre', metadata['genre']
+        '--title', _str2bytes(metadata['title']),
+        '--artist', _str2bytes(metadata['artist']),
+        '--album', _str2bytes(metadata['album']),
+        '--genre', _str2bytes(metadata['genre'])
     ]
 
     def _add_comment(k, s):
         # TODO Do I need to escape = or space?
-        opus_params.extend(['--comment', f"{k}={metadata[s]}"])
+        opus_params.extend(['--comment', _str2bytes(f"{k}={metadata[s]}")])
 
     _add_comment('description', 'comment')
     _add_comment('publisher', 'publisher')
@@ -334,7 +345,7 @@ def encode(
         ])
         opus_params.extend([
             '--comment',
-            'CHAPTER%02dNAME=%s' % (chapter_n, name)
+            _str2bytes('CHAPTER%02dNAME=%s' % (chapter_n, name))
         ])
 
         prev_name = name
@@ -343,7 +354,7 @@ def encode(
     if image is not None:
         opus_params.extend(['--picture', image])
 
-    opus_params.extend(['-', str(opus)])
+    opus_params.extend(['-', opus])
 
     log.debug('opusenc = %r', opus_params)
 
