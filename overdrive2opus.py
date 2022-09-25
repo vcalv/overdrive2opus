@@ -9,7 +9,6 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from urllib.request import urlretrieve
 import argparse
-from os import makedirs, scandir
 from appdirs import user_cache_dir
 
 import logging as log
@@ -25,7 +24,7 @@ def _get_noise_model():
     log.debug('noise_filename = %r', filename)
     if not filename.exists():
         directory = filename.parent
-        makedirs(directory, exist_ok=True)
+        directory.mkdir(exist_ok=True, parents=True)
         log.info('Downloading voice/noise model from %r', NOISE_MODEL_URL)
         urlretrieve(NOISE_MODEL_URL, filename)
     return str(filename)
@@ -64,12 +63,11 @@ def _list_files(path, ext=None):
         if len(ext) > 0 and ext[0] != '.':
             ext = '.' + ext
 
-    files = (Path(f) for f in scandir(path) if f.is_file())
+    files = (f for f in path.iterdir() if f.is_file())
 
     if ext:
         return [f for f in files if ext == f.suffix]
-    else:
-        return list(files)
+    return list(files)
 
 
 try:
