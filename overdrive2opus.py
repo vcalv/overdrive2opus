@@ -356,7 +356,10 @@ def encode(
 
     log.debug('opusenc = %r', opus_params)
 
-    ffmpeg_params = ['ffmpeg', '-loglevel', 'quiet', '-hide_banner', '-stats']
+    ffmpeg_params = ['ffmpeg',
+        '-loglevel', 'quiet', '-hide_banner',
+        '-stats', '-stats_period', '1'
+    ]
 
     filt = ''
     for n, f in enumerate(metadata['files']):
@@ -442,7 +445,8 @@ def encode(
         if m:
             timestr = m.group(1)
             progress_time = _ts_from_time(timestr)
-            bar.goto(progress_time)
+            if progress_time > 0:
+                bar.goto(progress_time)
     bar.finish()
     opus_sub.wait()
     ffmpeg_sub.wait()
