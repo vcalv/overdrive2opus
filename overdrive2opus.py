@@ -430,7 +430,7 @@ def encode(
             suffix='%(percent)d%% [%(eta_td)s]'
         )
 
-        progress_rx = re.compile('\s*time\s*=\s*(\S+)\s*')
+        progress_rx = re.compile(r'\s*time\s*=\s*(\S+)\s*')
 
     while opus_sub.poll() is None:
         line = progress_io.readline()
