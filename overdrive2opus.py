@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
-from typing import Union
+from typing import Optional
+import logging as log
 import subprocess
 from io import TextIOWrapper
 import json
@@ -11,11 +12,11 @@ from urllib.request import urlretrieve
 import argparse
 from appdirs import user_cache_dir
 
-import logging as log
 
 APPNAME = 'overdrive2opus'
 
-NOISE_MODEL_URL = 'https://raw.githubusercontent.com/GregorR/rnnoise-models/master/somnolent-hogwash-2018-09-01/sh.rnnn'
+NOISE_MODEL_URL = 'https://raw.githubusercontent.com/GregorR/' \
+                  'rnnoise-models/master/somnolent-hogwash-2018-09-01/sh.rnnn'
 
 
 # I dont' want to ship this due to unknown license
@@ -143,7 +144,10 @@ def get_metadata(fname):
 
     ret = {'file': fname}
 
-    for k in ('title', 'artist', 'genre', 'publisher', 'comment', 'album', 'copyright'):
+    for k in (
+        'title', 'artist', 'genre', 'publisher', 'comment',
+        'album', 'copyright'
+    ):
         ret[k] = t.get(k, None)
 
     track = _int(t.get('track'))
@@ -270,13 +274,13 @@ def get_folder_metadata(folder):
 
 def encode(
         folder: Path,
-        opus: Union[Path, None] = None,
+        opus: Optional[Path] = None,
         bitrate: float = 15,
         subchapters: bool = False,
         af: str = None,
         progress: bool = True,
         speed: int = 0,
-        normalize: int = None,
+        normalize: Optional[int] = None,
         isolate_voice: bool = False
         ):
 
@@ -356,7 +360,8 @@ def encode(
 
     log.debug('opusenc = %r', opus_params)
 
-    ffmpeg_params = ['ffmpeg',
+    ffmpeg_params = [
+        'ffmpeg',
         '-loglevel', 'quiet', '-hide_banner',
         '-stats', '-stats_period', '1'
     ]
