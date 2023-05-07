@@ -15,8 +15,10 @@ from appdirs import user_cache_dir
 
 APPNAME = 'overdrive2opus'
 
-NOISE_MODEL_URL = 'https://raw.githubusercontent.com/GregorR/' \
-                  'rnnoise-models/master/somnolent-hogwash-2018-09-01/sh.rnnn'
+NOISE_MODEL_URL = (
+    'https://raw.githubusercontent.com/GregorR/'
+    'rnnoise-models/master/somnolent-hogwash-2018-09-01/sh.rnnn'
+)
 
 
 # I dont' want to ship this due to unknown license
@@ -52,7 +54,7 @@ def _time2str(t, precision: int = 3):
     if precision <= 0:
         fmt += '%02d'
     else:
-        fmt += '%0'+str(3+precision)+'.'+str(precision)+'f'
+        fmt += '%0' + str(3 + precision) + '.' + str(precision) + 'f'
 
     return fmt % (hours, minutes, seconds)
 
@@ -73,13 +75,13 @@ def _list_files(path, ext=None):
 
 try:
     import progress.bar as progress_bar
+
     Bar = progress_bar.ShadyBar
 except ImportError:
     log.info('No progress bar implementation found. Using fallback.')
     from datetime import datetime
 
     class Bar:
-
         def __init__(self, title, max, suffix=''):
             self.__title = title
             self.__max = max
@@ -88,13 +90,13 @@ except ImportError:
 
         def goto(self, n):
             delta = datetime.now() - self.__start
-            percent = round(100.*n/self.__max)
+            percent = round(100.0 * n / self.__max)
 
             eta_td = 'N/A'
             if percent <= 0:
                 eta_td = float('+inf')
             else:
-                eta_td = (100./percent - 1)*delta
+                eta_td = (100.0 / percent - 1) * delta
                 eta_td = _time2str(round(eta_td.total_seconds()), precision=0)
 
             suffix = self.__suffix % {'percent': percent, 'eta_td': eta_td}
@@ -115,15 +117,7 @@ def _ts_from_time(s):
 
 
 def _get_metadata(fname):
-    args = [
-        'ffprobe',
-        '-v',
-        'quiet',
-        '-print_format',
-        'json',
-        '-show_format',
-        fname
-    ]
+    args = ['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', fname]
 
     with subprocess.Popen(args, stdout=subprocess.PIPE) as process:
         ret = json.load(process.stdout)
@@ -144,20 +138,14 @@ def get_metadata(fname):
 
     ret = {'file': fname}
 
-    for k in (
-        'title', 'artist', 'genre', 'publisher', 'comment',
-        'album', 'copyright'
-    ):
+    for k in ('title', 'artist', 'genre', 'publisher', 'comment', 'album', 'copyright'):
         ret[k] = t.get(k, None)
 
     track = _int(t.get('track'))
     title = t.get('title')
 
     if track is None:
-        log.debug(
-            'No track information for %r. Guessing from title %r.',
-            fname, title
-        )
+        log.debug('No track information for %r. Guessing from title %r.', fname, title)
         if title is None:
             raise KeyError("No title. Can't determine track")
 
@@ -176,8 +164,7 @@ def get_metadata(fname):
     # now for the OverDrive chapter information
 
     media_markers = t.get(
-        'OverDrive MediaMarkers',
-        "<?xml version=\"1.0\" ?>\n<metadata/>"
+        'OverDrive MediaMarkers', "<?xml version=\"1.0\" ?>\n<metadata/>"
     )
     root = ET.fromstring(media_markers)
     chapters = []
@@ -253,12 +240,7 @@ def get_folder_metadata(folder):
         log.warning('No album information, guessing title')
 
         title = _get_field('title')
-        title = re.sub(
-            r'\s*-?\s*Part\s*\d+\s*$',
-            '',
-            title,
-            flags=re.IGNORECASE
-        )
+        title = re.sub(r'\s*-?\s*Part\s*\d+\s*$', '', title, flags=re.IGNORECASE)
         log.info('Title = %r', title)
 
     ret['title'] = title
@@ -273,21 +255,20 @@ def get_folder_metadata(folder):
 
 
 def encode(
-        folder: Path,
-        opus: Optional[Path] = None,
-        bitrate: float = 15,
-        subchapters: bool = False,
-        af: str = None,
-        progress: bool = True,
-        speed: int = 0,
-        normalize: Optional[int] = None,
-        isolate_voice: bool = False
-        ):
-
+    folder: Path,
+    opus: Optional[Path] = None,
+    bitrate: float = 15,
+    subchapters: bool = False,
+    af: str | None = None,
+    progress: bool = True,
+    speed: int = 0,
+    normalize: Optional[int] = None,
+    isolate_voice: bool = False,
+):
     if speed < -50:
         log.warning('Invalid speed: truncating to -90%')
         speed = -50
-    speed_float = 1 + speed/100.0
+    speed_float = 1 + speed / 100.0
 
     folder = Path(folder)
     if opus is None:
@@ -306,15 +287,23 @@ def encode(
         'opusenc',
         '--quiet',
         '--ignorelength',
-        '--framesize', '60',
+        '--framesize',
+        '60',
         '--downmix-mono',
-        '--comp', '10',
-        '--vbr', '--bitrate', str(bitrate),
+        '--comp',
+        '10',
+        '--vbr',
+        '--bitrate',
+        str(bitrate),
         '--speech',  # override detection
-        '--title', _str2bytes(metadata['title']),
-        '--artist', _str2bytes(metadata['artist']),
-        '--album', _str2bytes(metadata['album']),
-        '--genre', _str2bytes(metadata['genre'])
+        '--title',
+        _str2bytes(metadata['title']),
+        '--artist',
+        _str2bytes(metadata['artist']),
+        '--album',
+        _str2bytes(metadata['album']),
+        '--genre',
+        _str2bytes(metadata['genre']),
     ]
 
     def _add_comment(k, s):
@@ -341,14 +330,12 @@ def encode(
                 continue
 
         chapter_n += 1
-        opus_params.extend([
-            '--comment',
-            ('CHAPTER%02d=' % chapter_n)+_time2str(time/speed_float)
-        ])
-        opus_params.extend([
-            '--comment',
-            _str2bytes('CHAPTER%02dNAME=%s' % (chapter_n, name))
-        ])
+        opus_params.extend(
+            ['--comment', ('CHAPTER%02d=' % chapter_n) + _time2str(time / speed_float)]
+        )
+        opus_params.extend(
+            ['--comment', _str2bytes('CHAPTER%02dNAME=%s' % (chapter_n, name))]
+        )
 
         prev_name = name
 
@@ -362,8 +349,12 @@ def encode(
 
     ffmpeg_params = [
         'ffmpeg',
-        '-loglevel', 'quiet', '-hide_banner',
-        '-stats', '-stats_period', '1'
+        '-loglevel',
+        'quiet',
+        '-hide_banner',
+        '-stats',
+        '-stats_period',
+        '1',
     ]
 
     filt = ''
@@ -399,28 +390,21 @@ def encode(
 
     if af is not None:
         log.info('Adding filter %r', af)
-        filt += ','+af
+        filt += ',' + af
 
-    ffmpeg_params.extend([
-        '-filter_complex', filt,
-        '-f', 'wav',
-        '-acodec', 'pcm_s16le',
-        '-'
-    ])
+    ffmpeg_params.extend(
+        ['-filter_complex', filt, '-f', 'wav', '-acodec', 'pcm_s16le', '-']
+    )
 
     log.debug('ffmpeg_params = %r', ffmpeg_params)
 
-    log.info(
-        '%s files (%s)',
-        len(metadata['files']),
-        _time2str(metadata['duration'])
-    )
+    log.info('%s files (%s)', len(metadata['files']), _time2str(metadata['duration']))
 
     ffmpeg_sub = subprocess.Popen(
         ffmpeg_params,
         stdout=subprocess.PIPE,
         stdin=subprocess.PIPE,
-        stderr=subprocess.PIPE
+        stderr=subprocess.PIPE,
     )
 
     progress_io = TextIOWrapper(ffmpeg_sub.stderr, newline="\r", line_buffering=True)
@@ -434,8 +418,8 @@ def encode(
     if progress:
         bar = Bar(
             'Processing %r' % (metadata['title'],),
-            max=metadata['duration']/speed_float,
-            suffix='%(percent)d%% [%(eta_td)s]'
+            max=metadata['duration'] / speed_float,
+            suffix='%(percent)d%% [%(eta_td)s]',
         )
 
         progress_rx = re.compile(r'\s*time\s*=\s*(\S+)\s*')
@@ -459,65 +443,43 @@ def encode(
 
 parser = argparse.ArgumentParser(
     description='Convert a OverDrive audiobook folder with an opus file '
-                'with thumbnail and chapter information'
+    'with thumbnail and chapter information'
 )
+parser.add_argument('--bitrate', type=int, help='opus bitrate in kbps', default=15)
+parser.add_argument('--subchapters', action='store_true', help='include subchapters')
 parser.add_argument(
-    '--bitrate',
-    type=int,
-    help='opus bitrate in kbps',
-    default=15
-)
-parser.add_argument(
-    '--subchapters',
-    action='store_true',
-    help='include subchapters'
-)
-parser.add_argument(
-    '--noprogress',
-    action='store_true',
-    help='do not display encoding progress bar'
+    '--noprogress', action='store_true', help='do not display encoding progress bar'
 )
 parser.add_argument(
     '--speed',
     type=int,
     default=0,
-    help='speed up or down audio (signed integer %%). Chapters adjusted accordingly'
+    help='speed up or down audio (signed integer %%). Chapters adjusted accordingly',
 )
 parser.add_argument(
     '--normalize',
     type=int,
     default=None,
-    help='%% of max volume for dynamic normalization'
+    help='%% of max volume for dynamic normalization',
 )
 parser.add_argument(
     '--isolate_voice',
     action='store_true',
-    help='apply filter to isolate voice from background noise'
+    help='apply filter to isolate voice from background noise',
 )
 parser.add_argument(
     '--filter',
     type=str,
     help='audio filter for fmmpeg. don\'t use unless you know what you are doing',
     default=None,
-    required=False
+    required=False,
+)
+parser.add_argument('folder', type=str, help='input folder')
+parser.add_argument(
+    'opus_file', type=str, help='output opus file', default=None, nargs='?'
 )
 parser.add_argument(
-    'folder',
-    type=str,
-    help='input folder'
-)
-parser.add_argument(
-    'opus_file',
-    type=str,
-    help='output opus file',
-    default=None,
-    nargs='?'
-)
-parser.add_argument(
-    '-v',
-    '--verbose',
-    help='increase output verbosity',
-    action='store_true'
+    '-v', '--verbose', help='increase output verbosity', action='store_true'
 )
 
 
@@ -538,5 +500,5 @@ encode(
     progress=not args.noprogress,
     speed=args.speed,
     normalize=args.normalize,
-    isolate_voice=args.isolate_voice
+    isolate_voice=args.isolate_voice,
 )
