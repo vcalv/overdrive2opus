@@ -123,7 +123,15 @@ def _ts_from_time(s: str) -> float:
 
 
 def _get_metadata(fname: Path):
-    args: list[Union[str | Path]] = ['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', fname]
+    args: list[Union[str | Path]] = [
+        'ffprobe',
+        '-v',
+        'quiet',
+        '-print_format',
+        'json',
+        '-show_format',
+        fname,
+    ]
 
     with subprocess.Popen(args, stdout=subprocess.PIPE) as process:
         if process.stdout is None:
