@@ -207,15 +207,9 @@ def get_metadata(fname: Path) -> dict:
 def get_folder_metadata(folder: Path):
     files = _list_files(Path(folder), 'mp3')
 
-    image = None
-    for img in _list_files(folder, 'jpg'):
-        img_p: str = img.as_posix()
-        # ignore thumbnails
-        # TODO Maybe I should just keep the highest resolution image
-        if '_thumb' in img_p:
-            continue
-        else:
-            image = img
+    # TODO look at the actual image dimensions and not just file size
+    # just pick the largest image as the correct one
+    image: Path = max((f.stat().st_size, f) for f in _list_files(folder, 'jpg'))[1]
 
     ret: dict = {}
 
