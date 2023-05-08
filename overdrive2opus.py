@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from typing import Optional
+from typing import Optional, Union
 import logging as log
 import subprocess
 from io import TextIOWrapper
@@ -22,7 +22,7 @@ NOISE_MODEL_URL = (
 
 
 # I dont' want to ship this due to unknown license
-def _get_noise_model():
+def _get_noise_model() -> str:
     filename = Path(user_cache_dir(APPNAME), 'voice.rnnn')
     log.debug('noise_filename = %r', filename)
     if not filename.exists():
@@ -33,7 +33,7 @@ def _get_noise_model():
     return str(filename)
 
 
-def _str2bytes(s):
+def _str2bytes(s: str | bytes) -> bytes:
     if isinstance(s, bytes):
         return s
     elif isinstance(s, str):
@@ -44,7 +44,7 @@ def _str2bytes(s):
         return s
 
 
-def _time2str(t, precision: int = 3):
+def _time2str(t: float, precision: int = 3) -> str:
     minutes, seconds = divmod(t, 60)
     minutes = round(minutes)
     hours, minutes = divmod(minutes, 60)
@@ -59,7 +59,7 @@ def _time2str(t, precision: int = 3):
     return fmt % (hours, minutes, seconds)
 
 
-def _list_files(path, ext=None, case=False):
+def _list_files(path: Path, ext: Optional[str] = None, case=False) -> list[Path]:
     if ext is None:
         ext = ''
     else:
@@ -113,8 +113,8 @@ except ImportError:
             print()
 
 
-def _ts_from_time(s):
-    ret = 0
+def _ts_from_time(s: str) -> float:
+    ret: float = 0
     for n in s.split(':'):
         ret *= 60
         ret += float(n)
@@ -122,27 +122,29 @@ def _ts_from_time(s):
     return ret
 
 
-def _get_metadata(fname):
-    args = ['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', fname]
+def _get_metadata(fname: Path):
+    args: list[Union[str | Path]] = ['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', fname]
 
     with subprocess.Popen(args, stdout=subprocess.PIPE) as process:
+        if process.stdout is None:
+            raise RuntimeError("Error in getting data from ffmpeg")
         ret = json.load(process.stdout)
         log.debug('Raw metadata = %r', ret)
         return ret
 
 
-def _int(s):
+def _int(s: str) -> Optional[int]:
     try:
         return int(s)
     except (TypeError, ValueError):
         return None
 
 
-def get_metadata(fname):
+def get_metadata(fname: Path) -> dict:
     d = _get_metadata(fname)['format']
     t = d['tags']
 
-    ret = {'file': fname}
+    ret: dict = {'file': fname}
 
     for k in ('title', 'artist', 'genre', 'publisher', 'comment', 'album', 'copyright'):
         ret[k] = t.get(k, None)
@@ -177,12 +179,12 @@ def get_metadata(fname):
 
     for marker in root:
         if 'Marker' == marker.tag:
-            name = 'Unknown name'
-            time = 0
+            name: str = 'Unknown name'
+            time: float = 0
             for child in marker:
-                if 'Name' == child.tag:
+                if 'Name' == child.tag and child.text is not None:
                     name = child.text
-                if 'Time' == child.tag:
+                if 'Time' == child.tag and child.text is not None:
                     time = _ts_from_time(child.text)
 
             chapters.append((name, time))
@@ -194,45 +196,45 @@ def get_metadata(fname):
     return ret
 
 
-def get_folder_metadata(folder):
+def get_folder_metadata(folder: Path):
     files = _list_files(Path(folder), 'mp3')
 
     image = None
-    for img in _list_files(Path(folder), 'jpg'):
-        img = img.as_posix()
+    for img in _list_files(folder, 'jpg'):
+        img_p: str = img.as_posix()
         # ignore thumbnails
         # TODO Maybe I should just keep the highest resolution image
-        if '_thumb' in img:
+        if '_thumb' in img_p:
             continue
         else:
             image = img
 
-    ret = {}
+    ret: dict = {}
 
-    files = [get_metadata(f) for f in files]
+    files_meta = [get_metadata(f) for f in files]
 
     # order by track number
-    files.sort(key=lambda f: int(f['track']))
+    files_meta.sort(key=lambda f: int(f['track']))
 
     # now get the chapter information
 
     chapters = []
     delta = 0
 
-    for f in files:
+    for f in files_meta:
         for name, time in f['chapters']:
             chapters.append((name, time + delta))
 
         delta += f['duration']
 
-    ret['files'] = files
+    ret['files'] = files_meta
     ret['chapters'] = chapters
     ret['duration'] = delta
 
     # now get general data
 
-    def _get_field(field):
-        for f in files:
+    def _get_field(field: str) -> str:
+        for f in files_meta:
             value = f.get(field, None)
 
             if value is not None:
@@ -253,8 +255,8 @@ def get_folder_metadata(folder):
     ret['album'] = title + ' - Overdrive'
     ret['image'] = image
 
-    for f in ('artist', 'genre', 'comment', 'publisher', 'copyright'):
-        ret[f] = _get_field(f)
+    for field in ('artist', 'genre', 'comment', 'publisher', 'copyright'):
+        ret[field] = _get_field(field)
 
     log.debug('Folder metadata for %r = %r', folder, ret)
     return ret
@@ -270,7 +272,7 @@ def encode(
     speed: int = 0,
     normalize: Optional[int] = None,
     isolate_voice: bool = False,
-):
+) -> None:
     if speed < -50:
         log.warning('Invalid speed: truncating to -90%')
         speed = -50
@@ -289,7 +291,7 @@ def encode(
         log.warning('No mp3 files found. Nothing to encode')
         raise FileNotFoundError
 
-    opus_params = [
+    opus_params: list[str | bytes] = [
         'opusenc',
         '--quiet',
         '--ignorelength',
@@ -349,7 +351,7 @@ def encode(
     if image is not None:
         opus_params.extend(['--picture', image])
 
-    opus_params.extend(['-', opus])
+    opus_params.extend(['-', str(opus)])
 
     log.debug('opusenc = %r', opus_params)
 
@@ -412,6 +414,9 @@ def encode(
         stdin=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
+
+    if ffmpeg_sub.stderr is None:
+        raise RuntimeError("Error running ffmpeg encoder")
 
     progress_io = TextIOWrapper(ffmpeg_sub.stderr, newline="\r", line_buffering=True)
     opus_sub = subprocess.Popen(
