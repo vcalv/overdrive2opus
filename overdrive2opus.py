@@ -59,17 +59,23 @@ def _time2str(t, precision: int = 3):
     return fmt % (hours, minutes, seconds)
 
 
-def _list_files(path, ext=None):
+def _list_files(path, ext=None, case=False):
     if ext is None:
         ext = ''
     else:
         if len(ext) > 0 and ext[0] != '.':
             ext = '.' + ext
 
+    if case:
+        ext = ext.lower()
+
     files = (f for f in path.iterdir() if f.is_file())
 
     if ext:
-        return [f for f in files if ext == f.suffix]
+        if case:
+            return [f for f in files if ext == f.suffix]
+        else:
+            return [f for f in files if ext == f.suffix.lower()]
     return list(files)
 
 
