@@ -7,6 +7,7 @@ from io import TextIOWrapper
 import json
 import re
 import xml.etree.ElementTree as ET
+from html import unescape
 from pathlib import Path
 from urllib.request import urlretrieve
 import argparse
@@ -153,7 +154,13 @@ def get_metadata(fname: Path) -> dict:
     ret: dict = {'file': fname}
 
     for k in ('title', 'artist', 'genre', 'publisher', 'comment', 'album', 'copyright'):
-        ret[k] = t.get(k, None)
+        _val = t.get(k, None)
+
+        # comments are usually full of xml/html entities
+        if _val is not None:
+            _val = unescape(_val)
+
+        ret[k] = _val
 
     track = _int(t.get('track'))
     title = t.get('title')
