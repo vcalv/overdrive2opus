@@ -66,15 +66,13 @@ def _list_files(path: Path, ext: Optional[str] = None, case=False) -> list[Path]
         if len(ext) > 0 and ext[0] != '.':
             ext = '.' + ext
 
-    if case:
-        ext = ext.lower()
-
     files = (f for f in path.iterdir() if f.is_file())
 
     if ext:
         if case:
             return [f for f in files if ext == f.suffix]
         else:
+            ext = ext.lower()
             return [f for f in files if ext == f.suffix.lower()]
     return list(files)
 
