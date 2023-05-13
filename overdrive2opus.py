@@ -284,8 +284,8 @@ def encode(
     normalize: Optional[int] = None,
     isolate_voice: bool = False,
 ) -> None:
-    if speed < -50:
-        log.warning('Invalid speed: truncating to -90%')
+    if speed < -99:
+        log.warning('Invalid speed: truncating to -99%')
         speed = -50
     speed_float = 1 + speed / 100.0
 
