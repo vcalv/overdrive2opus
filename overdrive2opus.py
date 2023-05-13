@@ -214,7 +214,11 @@ def get_folder_metadata(folder: Path):
 
     # TODO look at the actual image dimensions and not just file size
     # just pick the largest image as the correct one
-    image: Path = max((f.stat().st_size, f) for f in _list_files(folder, 'jpg'))[1]
+
+    try:
+        image = max((f.stat().st_size, f) for f in _list_files(folder, 'jpg'))[1]
+    except ValueError:
+        image = None
 
     ret: dict = {}
 
