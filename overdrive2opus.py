@@ -12,6 +12,8 @@ from pathlib import Path
 from urllib.request import urlretrieve
 import argparse
 from appdirs import user_cache_dir
+from rich.logging import RichHandler
+
 
 
 APPNAME = 'overdrive2opus'
@@ -508,10 +510,12 @@ parser.add_argument(
 args = parser.parse_args()
 
 if args.verbose:
-    log.basicConfig(level=log.DEBUG)
+    log.basicConfig(level=log.DEBUG, handlers=[RichHandler(rich_tracebacks=True)]
+)
     log.debug('args = %r', args)
 else:
-    log.basicConfig(level=log.WARNING)
+    log.basicConfig(level=log.WARNING, handlers=[RichHandler(rich_tracebacks=True)]
+)
 
 encode(
     args.folder,
