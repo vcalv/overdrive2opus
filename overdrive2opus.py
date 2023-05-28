@@ -15,6 +15,7 @@ from appdirs import user_cache_dir
 
 from rich.logging import RichHandler
 from rich.traceback import install as traceback_install
+from rich.progress import (Progress, BarColumn, TimeRemainingColumn, TextColumn, Column)
 
 
 APPNAME = 'overdrive2opus'
@@ -79,40 +80,6 @@ def _list_files(path: Path, ext: Optional[str] = None, case=False) -> list[Path]
             ext = ext.lower()
             return [f for f in files if ext == f.suffix.lower()]
     return list(files)
-
-
-try:
-    import progress.bar as progress_bar
-
-    Bar = progress_bar.ShadyBar
-except ImportError:
-    log.info('No progress bar implementation found. Using fallback.')
-    from datetime import datetime
-
-    class Bar:
-        def __init__(self, title, max, suffix=''):
-            self.__title = title
-            self.__max = max
-            self.__suffix = suffix
-            self.__start = datetime.now()
-
-        def goto(self, n):
-            delta = datetime.now() - self.__start
-            percent = round(100.0 * n / self.__max)
-
-            eta_td = 'N/A'
-            if percent <= 0:
-                eta_td = float('+inf')
-            else:
-                eta_td = (100.0 / percent - 1) * delta
-                eta_td = _time2str(round(eta_td.total_seconds()), precision=0)
-
-            suffix = self.__suffix % {'percent': percent, 'eta_td': eta_td}
-            print(self.__title + "\t" + suffix + '\r', end='')
-
-        def finish(self):
-            self.goto(self.__max)
-            print()
 
 
 def _ts_from_time(s: str) -> float:
@@ -440,30 +407,41 @@ def encode(
         stderr=subprocess.DEVNULL,
     )
 
-    if progress:
-        bar = Bar(
-            'Processing %r' % (metadata['title'],),
-            max=metadata['duration'] / speed_float,
-            suffix='%(percent)d%% [%(eta_td)s]',
-        )
+    with Progress(
+            TextColumn(f"[bold blue]{metadata['title']}", justify="right", table_column=Column(ratio=1)),
+            BarColumn(bar_width=None, table_column=Column(ratio=2)),
+            "[progress.percentage]{task.percentage:>3.1f}%",
+            "•",
+            TimeRemainingColumn(),
+        ) as bar:
+        if progress:
 
-        progress_rx = re.compile(r'\s*time\s*=\s*(\S+)\s*')
+            total = metadata['duration'] / speed_float
+            task = bar.add_task('Encoding', total=total)
+            bar.update(task, total=total)
+            bar.print("[bold]Processing")
 
-    while opus_sub.poll() is None:
-        line = progress_io.readline()
+            progress_rx = re.compile(r'\s*time\s*=\s*(\S+)\s*')
 
-        if not progress:
-            continue
+        _progress_time = 0.0
+        while opus_sub.poll() is None:
+            line = progress_io.readline()
 
-        m = progress_rx.search(line)
-        if m:
-            timestr = m.group(1)
-            progress_time = _ts_from_time(timestr)
-            if progress_time > 0:
-                bar.goto(progress_time)
-    bar.finish()
-    opus_sub.wait()
-    ffmpeg_sub.wait()
+            if not progress:
+                continue
+
+            m = progress_rx.search(line)
+            if m:
+                timestr = m.group(1)
+                progress_time = _ts_from_time(timestr)
+                delta = progress_time - _progress_time
+                if delta > 0:
+                    _progress_time = progress_time
+                    bar.update(task, advance=delta)
+        opus_sub.wait()
+        ffmpeg_sub.wait()
+        if progress:
+            bar.print("[bold green]:thumbs_up:")
 
 
 parser = argparse.ArgumentParser(

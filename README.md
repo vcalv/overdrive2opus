@@ -16,7 +16,7 @@ For downloading overdrive audiobooks check out https://github.com/vcalv/overdriv
 # Dependencies
 
 * python3
-* ffmpeg
-* opusenc
+* ffmpeg executable, no python bindings needed
+* opusenc executable
 * python-appdirs
-* python-progress (optional)
+* python-rich
