@@ -31,11 +31,13 @@ NOISE_MODEL_URL = (
     'rnnoise-models/master/somnolent-hogwash-2018-09-01/sh.rnnn'
 )
 
-def __init_logging(level: int, rich: bool):
-    if rich:
+def __init_logging(verbose: bool):
+    if verbose:
         traceback_install(show_locals=True)
-
-    log.basicConfig(level=level, handlers=[RichHandler(rich_tracebacks=rich)])
+        log.basicConfig(level=log.DEBUG, handlers=[RichHandler(rich_tracebacks=True)])
+        log.debug('args = %r', args)
+    else:
+        log.basicConfig(level=log.WARNING, handlers=[RichHandler(rich_tracebacks=False)])
 
 # I dont' want to ship this due to unknown license
 def _get_noise_model() -> str:
@@ -500,11 +502,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-if args.verbose:
-    __init_logging(level=log.DEBUG, rich=True)
-    log.debug('args = %r', args)
-else:
-    __init_logging(level=log.WARNING, rich=False)
+__init_logging(args.verbose)
 
 encode(
     args.folder,
