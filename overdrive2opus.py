@@ -17,6 +17,12 @@ from rich.logging import RichHandler
 from rich.traceback import install as traceback_install
 from rich.progress import (Progress, BarColumn, TimeRemainingColumn, TextColumn, Column)
 
+from argparse import HelpFormatter as Formatter
+
+try:
+    from rich_argparse import RichHelpFormatter as Formatter
+except ImportError:
+    pass
 
 APPNAME = 'overdrive2opus'
 
@@ -446,7 +452,8 @@ def encode(
 
 parser = argparse.ArgumentParser(
     description='Convert a OverDrive audiobook folder with an opus file '
-    'with thumbnail and chapter information'
+    'with thumbnail and chapter information',
+    formatter_class=Formatter
 )
 parser.add_argument('--bitrate', type=int, help='opus bitrate in kbps', default=15)
 parser.add_argument('--subchapters', action='store_true', help='include subchapters')
