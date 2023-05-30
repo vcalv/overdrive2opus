@@ -192,7 +192,7 @@ def get_metadata(fname: Path) -> dict:
     return ret
 
 
-def get_folder_metadata(folder: Path):
+def get_folder_metadata(folder: Path, subchapters: bool):
     files = _list_files(Path(folder), 'mp3')
 
     # TODO look at the actual image dimensions and not just file size
@@ -215,9 +215,22 @@ def get_folder_metadata(folder: Path):
     chapters = []
     delta = 0
 
+    prev_name = None
     for f in files_meta:
         for name, time in f['chapters']:
+            if not subchapters:
+                # cleanup spurious sub chapters
+                if len(name) and name[0].isspace():
+                    log.info('Ignoring subchapter %r due to indent', name)
+                    continue
+                elif re.search(r'\s+\([0-9:]+\)\s*$', name):
+                    log.info('Ignoring subchapter %r due to timestamp', name)
+                    continue
+                elif prev_name is not None and prev_name == name:
+                    log.info('Ignoring subchapter %r due to repeated chapter name', name)
+                    continue
             chapters.append((name, time + delta))
+            prev_name = name
 
         delta += f['duration']
 
@@ -279,7 +292,7 @@ def encode(
 
     log.info('Encoding from %s to %s', folder, opus)
 
-    metadata = get_folder_metadata(folder)
+    metadata = get_folder_metadata(folder, subchapters)
 
     if 0 == len(metadata['files']):
         log.warning('No mp3 files found. Nothing to encode')
@@ -316,30 +329,13 @@ def encode(
     _add_comment('publisher', 'publisher')
     _add_comment('copyright', 'copyright')
 
-    chapter_n = 0
-    prev_name = None
-    for name, time in metadata['chapters']:
-        if not subchapters:
-            # cleanup spurious sub chapters
-            if len(name) and name[0].isspace():
-                log.info('Ignoring subchapter %r due to indent', name)
-                continue
-            elif re.search(r'\s+\([0-9:]+\)\s*$', name):
-                log.info('Ignoring subchapter %r due to timestamp', name)
-                continue
-            elif prev_name is not None and prev_name == name:
-                log.info('Ignoring subchapter %r due to repeated chapter name', name)
-                continue
-
-        chapter_n += 1
+    for (chapter_n, (name, time)) in enumerate(metadata['chapters'], start=1):
         opus_params.extend(
             ['--comment', ('CHAPTER%02d=' % chapter_n) + _time2str(time / speed_float)]
         )
         opus_params.extend(
             ['--comment', _str2bytes('CHAPTER%02dNAME=%s' % (chapter_n, name))]
         )
-
-        prev_name = name
 
     image = metadata['image']
     if image is not None:
