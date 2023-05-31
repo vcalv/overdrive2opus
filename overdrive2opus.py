@@ -15,7 +15,14 @@ from appdirs import user_cache_dir
 
 from rich.logging import RichHandler
 from rich.traceback import install as traceback_install
-from rich.progress import Progress, BarColumn, TimeRemainingColumn, TextColumn, Column
+from rich.progress import (
+    Progress,
+    BarColumn,
+    TimeRemainingColumn,
+    TextColumn,
+    Column,
+    SpinnerColumn,
+)
 
 from argparse import HelpFormatter as Formatter
 
@@ -430,18 +437,20 @@ def encode(
         ),
         BarColumn(bar_width=None, table_column=Column(ratio=2)),
         "[progress.percentage]{task.percentage:>3.1f}%",
-        "•",
+        SpinnerColumn(),
         TimeRemainingColumn(),
     ) as bar:
         if progress:
             total = metadata['duration'] / speed_float
-            task = bar.add_task('Encoding', total=total)
-            bar.print("[bold]Processing")
+            task = bar.add_task('Encoding', total=total, start=False)
+            bar.print("[bold]Pre-Processing")
 
             progress_rx = re.compile(r'\s*time\s*=\s*(\S+)\s*')
 
+        started = False
         while opus_sub.poll() is None:
             line = progress_io.readline()
+            log.debug('Progress line = %r', line)
 
             if not progress:
                 continue
@@ -451,6 +460,10 @@ def encode(
                 timestr = m.group(1)
                 progress_time = _ts_from_time(timestr)
                 if progress_time > 0:
+                    if not started:
+                        bar.print("[bold cyan]Encoding")
+                        bar.start_task(task)
+                        started = True
                     bar.update(task, completed=progress_time)
         opus_sub.wait()
         ffmpeg_sub.wait()
