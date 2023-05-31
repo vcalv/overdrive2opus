@@ -427,12 +427,10 @@ def encode(
 
             total = metadata['duration'] / speed_float
             task = bar.add_task('Encoding', total=total)
-            bar.update(task, total=total)
             bar.print("[bold]Processing")
 
             progress_rx = re.compile(r'\s*time\s*=\s*(\S+)\s*')
 
-        _progress_time = 0.0
         while opus_sub.poll() is None:
             line = progress_io.readline()
 
@@ -443,10 +441,8 @@ def encode(
             if m:
                 timestr = m.group(1)
                 progress_time = _ts_from_time(timestr)
-                delta = progress_time - _progress_time
-                if delta > 0:
-                    _progress_time = progress_time
-                    bar.update(task, advance=delta)
+                if progress_time > 0:
+                    bar.update(task, completed=progress_time)
         opus_sub.wait()
         ffmpeg_sub.wait()
         if progress:
