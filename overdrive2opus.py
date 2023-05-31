@@ -15,7 +15,7 @@ from appdirs import user_cache_dir
 
 from rich.logging import RichHandler
 from rich.traceback import install as traceback_install
-from rich.progress import (Progress, BarColumn, TimeRemainingColumn, TextColumn, Column)
+from rich.progress import Progress, BarColumn, TimeRemainingColumn, TextColumn, Column
 
 from argparse import HelpFormatter as Formatter
 
@@ -31,13 +31,17 @@ NOISE_MODEL_URL = (
     'rnnoise-models/master/somnolent-hogwash-2018-09-01/sh.rnnn'
 )
 
+
 def __init_logging(verbose: bool):
     if verbose:
         traceback_install(show_locals=True)
         log.basicConfig(level=log.DEBUG, handlers=[RichHandler(rich_tracebacks=True)])
         log.debug('args = %r', args)
     else:
-        log.basicConfig(level=log.WARNING, handlers=[RichHandler(rich_tracebacks=False)])
+        log.basicConfig(
+            level=log.WARNING, handlers=[RichHandler(rich_tracebacks=False)]
+        )
+
 
 # I dont' want to ship this due to unknown license
 def _get_noise_model() -> str:
@@ -227,7 +231,9 @@ def get_folder_metadata(folder: Path, subchapters: bool):
                     log.info('Ignoring subchapter %r due to timestamp', name)
                     continue
                 elif prev_name is not None and prev_name == name:
-                    log.info('Ignoring subchapter %r due to repeated chapter name', name)
+                    log.info(
+                        'Ignoring subchapter %r due to repeated chapter name', name
+                    )
                     continue
             chapters.append((name, time + delta))
             prev_name = name
@@ -329,7 +335,7 @@ def encode(
     _add_comment('publisher', 'publisher')
     _add_comment('copyright', 'copyright')
 
-    for (chapter_n, (name, time)) in enumerate(metadata['chapters'], start=1):
+    for chapter_n, (name, time) in enumerate(metadata['chapters'], start=1):
         opus_params.extend(
             ['--comment', ('CHAPTER%02d=' % chapter_n) + _time2str(time / speed_float)]
         )
@@ -417,14 +423,17 @@ def encode(
     )
 
     with Progress(
-            TextColumn(f"[bold blue]{metadata['title']}", justify="right", table_column=Column(ratio=1)),
-            BarColumn(bar_width=None, table_column=Column(ratio=2)),
-            "[progress.percentage]{task.percentage:>3.1f}%",
-            "•",
-            TimeRemainingColumn(),
-        ) as bar:
+        TextColumn(
+            f"[bold blue]{metadata['title']}",
+            justify="right",
+            table_column=Column(ratio=1),
+        ),
+        BarColumn(bar_width=None, table_column=Column(ratio=2)),
+        "[progress.percentage]{task.percentage:>3.1f}%",
+        "•",
+        TimeRemainingColumn(),
+    ) as bar:
         if progress:
-
             total = metadata['duration'] / speed_float
             task = bar.add_task('Encoding', total=total)
             bar.print("[bold]Processing")
@@ -452,7 +461,7 @@ def encode(
 parser = argparse.ArgumentParser(
     description='Convert a OverDrive audiobook folder with an opus file '
     'with thumbnail and chapter information',
-    formatter_class=Formatter
+    formatter_class=Formatter,
 )
 parser.add_argument('--bitrate', type=int, help='opus bitrate in kbps', default=15)
 parser.add_argument('--subchapters', action='store_true', help='include subchapters')
