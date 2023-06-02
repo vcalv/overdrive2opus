@@ -308,7 +308,7 @@ def encode(
     metadata = get_folder_metadata(folder, subchapters)
 
     if 0 == len(metadata['files']):
-        log.warning('No mp3 files found. Nothing to encode')
+        log.error('No mp3 files found. Nothing to encode')
         raise FileNotFoundError
 
     opus_params: list[str | bytes] = [
