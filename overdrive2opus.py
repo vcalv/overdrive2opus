@@ -414,14 +414,14 @@ def encode(
     ffmpeg_sub = subprocess.Popen(
         ffmpeg_params,
         stdout=subprocess.PIPE,
-        stdin=subprocess.PIPE,
+        stdin=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
     )
 
     if ffmpeg_sub.stderr is None:
         raise RuntimeError("Error running ffmpeg encoder")
 
-    progress_io = TextIOWrapper(ffmpeg_sub.stderr, newline="\r", line_buffering=True)
+    progress_io = TextIOWrapper(ffmpeg_sub.stderr, newline=None, line_buffering=True)
     opus_sub = subprocess.Popen(
         opus_params,
         stdin=ffmpeg_sub.stdout,
