@@ -231,8 +231,14 @@ def get_folder_metadata(folder: Path, subchapters: bool):
         for name, time in f['chapters']:
             if not subchapters:
                 # cleanup spurious sub chapters
-                if len(name) and name[0].isspace():
+                if name is None or 0 == len(name):
+                    log.info('Ignoring empty subchapter at %r', time)
+                    continue
+                if name[0].isspace():
                     log.info('Ignoring subchapter %r due to indent', name)
+                    continue
+                if name.startswith('...'):
+                    log.info('Ignoring subchapter %r due to ...', name)
                     continue
                 elif re.search(r'\s+\([0-9:]+\)\s*$', name):
                     log.info('Ignoring subchapter %r due to timestamp', name)
@@ -300,8 +306,8 @@ def encode(
 
     folder = Path(folder)
     if opus is None:
-        log.warning('Guessing opus filename')
-        opus = folder.with_suffix('.opus')
+        log.warning('Guessing opus filename from folder %r', folder)
+        opus = Path(str(folder) + '.opus')
 
     log.info('Encoding from %s to %s', folder, opus)
 
