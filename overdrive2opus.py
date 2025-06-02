@@ -143,7 +143,7 @@ def _int(s: str) -> Optional[int]:
 
 def get_metadata(fname: Path) -> dict:
     d = _get_metadata(fname)['format']
-    t = d['tags']
+    t = d.get('tags', {})
 
     ret: dict = {'file': fname}
 
@@ -162,7 +162,8 @@ def get_metadata(fname: Path) -> dict:
     if track is None:
         log.debug('No track information for %r. Guessing from title %r.', fname, title)
         if title is None:
-            raise KeyError("No title. Can't determine track")
+            log.warning("No title. Can't determine track. Using filename")
+            title = fname.name
 
         rx = re.compile(r'-\s*Part\s*(\d+)', re.IGNORECASE)
         m = rx.search(title)
@@ -324,9 +325,12 @@ def encode(
         '--framesize',
         '60',
         '--downmix-mono',
+        '--no-phase-inv',
         '--comp',
         '10',
         '--vbr',
+        '--expect-loss',
+        '0',
         '--bitrate',
         str(bitrate),
         '--speech',  # override detection
@@ -465,17 +469,24 @@ def encode(
 
             if not progress:
                 continue
+            if not line:
+                log.debug('Empry progress line. skipping')
+                continue
 
             m = progress_rx.search(line)
             if m:
                 timestr = m.group(1)
-                progress_time = _ts_from_time(timestr)
-                if progress_time > 0:
-                    if not started:
-                        __message("[bold cyan]Encoding")
-                        bar.start_task(task)
-                        started = True
-                    bar.update(task, completed=progress_time)
+                try:
+                    progress_time = _ts_from_time(timestr)
+                except Exception as ex:
+                    log.debug('Exception in progress bar: %r', ex)
+                else:
+                    if progress_time > 0:
+                        if not started:
+                            __message("[bold cyan]Encoding")
+                            bar.start_task(task)
+                            started = True
+                        bar.update(task, completed=progress_time)
         opus_sub.wait()
         ffmpeg_sub.wait()
         if progress:
